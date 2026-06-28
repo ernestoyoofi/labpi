@@ -1,9 +1,9 @@
-name: Build & Release (Manual Tag)
+name: Build & Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
 jobs:
   build:
@@ -78,6 +78,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Generate tag
+        id: tag
+        run: |
+          TAG="v$(date +%Y.%m.%d.%H%M%S)"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+      
+      - name: Create tag
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag ${{ steps.tag.outputs.tag }}
+          git push origin ${{ steps.tag.outputs.tag }}
       
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -92,6 +107,7 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
+          tag: ${{ steps.tag.outputs.tag }}
           artifacts: "dist/*"
           draft: false
           prerelease: false

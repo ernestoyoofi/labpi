@@ -1,0 +1,71 @@
+name: Auto Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.18'
+
+      - name: Get version from go.mod
+        id: version
+        run: |
+          VERSION=$(grep "^go " go.mod | awk '{print $2}')
+          TAG="v${VERSION}.$(date +%Y%m%d.%s)"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+
+      - name: Build all platforms
+        run: |
+          mkdir -p dist
+          platforms=(
+            "windows:amd64:.exe"
+            "windows:386:.exe"
+            "windows:arm64:.exe"
+            "linux:amd64:"
+            "linux:386:"
+            "linux:arm64:"
+            "linux:arm:"
+            "darwin:amd64:"
+            "darwin:arm64:"
+            "freebsd:amd64:"
+            "freebsd:386:"
+            "freebsd:arm:"
+            "openbsd:amd64:"
+            "openbsd:386:"
+            "openbsd:arm:"
+            "netbsd:amd64:"
+            "netbsd:386:"
+            "netbsd:arm64:"
+            "android:arm64:"
+          )
+          
+          for platform in "${platforms[@]}"; do
+            IFS=':' read -r os arch ext <<< "$platform"
+            echo "Building $os/$arch..."
+            GOOS=$os GOARCH=$arch go build -o "dist/labpi-${os}-${arch}${ext}"
+          done
+
+      - name: Create tag
+        run: |
+          git tag ${{ steps.version.outputs.tag }}
+          git push origin ${{ steps.version.outputs.tag }}
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.version.outputs.tag }}
+          artifacts: "dist/*"
+          draft: false
+          prerelease: false
+          token: ${{ secrets.GITHUB_TOKEN }}

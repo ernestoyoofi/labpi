@@ -1,0 +1,91 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: windows
+            arch: amd64
+            ext: .exe
+          - os: windows
+            arch: 386
+            ext: .exe
+          - os: windows
+            arch: arm64
+            ext: .exe
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: 386
+          - os: linux
+            arch: arm64
+          # - os: linux
+          #   arch: arm
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+          - os: freebsd
+            arch: amd64
+          - os: freebsd
+            arch: 386
+          - os: freebsd
+            arch: arm
+          - os: openbsd
+            arch: amd64
+          - os: openbsd
+            arch: 386
+          - os: openbsd
+            arch: arm
+          - os: netbsd
+            arch: amd64
+          - os: netbsd
+            arch: 386
+          - os: netbsd
+            arch: arm64
+          - os: android
+            arch: arm64
+
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.18'
+      
+      - name: Build
+        env:
+          GOOS: ${{ matrix.os }}
+          GOARCH: ${{ matrix.arch }}
+        run: go build -o labpi-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
+      
+      # - name: Upload artifact
+      #   uses: actions/upload-artifact@v3
+      #   with:
+      #     name: labpi-${{ matrix.os }}-${{ matrix.arch }}
+      #     path: labpi-${{ matrix.os }}-${{ matrix.arch }}${{ matrix.ext }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            labpi-*/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
